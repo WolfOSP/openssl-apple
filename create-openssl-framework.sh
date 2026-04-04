@@ -183,6 +183,9 @@ if [ $FWTYPE == "dynamic" ]; then
                 -e "s/\\\$(OPENSSL_VERSION)/$OPENSSL_VERSION/g" \
                 -i '' "$FWDIR/Info.plist"
             echo "Created $FWDIR"
+
+            echo "Generating dSYM for $SYS"
+            dsymutil "$FWDIR/$FWNAME" -o "$FWDIR.dSYM"
         else
             echo "Skipped framework for $SYS"
         fi
@@ -245,6 +248,7 @@ done
 
 build_xcframework() {
     local FRAMEWORKS=($FWROOT/*/$FWNAME.framework)
+    local DSYMS=($FWROOT/*/*.dSYM)
     local ARGS=
     for ARG in ${FRAMEWORKS[@]}; do
         ARGS+="-framework ${ARG} "
@@ -252,6 +256,12 @@ build_xcframework() {
 
     echo
     xcodebuild -create-xcframework $ARGS -output "$FWROOT/$FWNAME.xcframework"
+
+    for DSYM in ${DSYMS[@]}; do
+        if [[ -e "$DSYM" ]]; then
+            cp -r "$DSYM" "$FWROOT/$FWNAME.xcframework/"
+        fi
+    done
 
     # These intermediate frameworks are silly, and not needed any more.
     #find ${FWROOT} -mindepth 1 -maxdepth 1 -type d -not -name "$FWNAME.xcframework" -exec rm -rf '{}' \;
